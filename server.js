@@ -9,6 +9,8 @@ app.get('/',(req, res) => {
     res.sendFile(__dirname+"/index.html");
 });
 
+
+app.get("/api/services", (req, res) =>{
 let services = [
     {
         "_id":1,
@@ -66,9 +68,9 @@ let services = [
         "Description":"Our headspa treatments are new to Luma Salon! Come enjoy these soothing head spas at Luma Salon!",
         "img_name":"images/mermaid_spa.jpg"
     }
-]
+];
 
-app.get("/api/services", (req, res) =>{
+
    res.send(services);
 })
 
