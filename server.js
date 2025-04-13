@@ -1,16 +1,29 @@
 const express = require("express");
 const cors = require("cors");
+const multer = require("multer")
 const app = express();
+const Joi = require("joi");
 app.use(express.static("public"));
 app.use(express.json());
 app.use(cors());
 
-app.get('/',(req, res) => {
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, "./public/images/");
+    },
+    filename: (req, file, cb) => {
+        cb(null, file.originalname);
+    },
+});
+
+const upload = multer({ storage: storage });
+
+app.get("/",(req, res) => {
     res.sendFile(__dirname+"/index.html");
 });
 
 
-app.get("/api/services", (req, res) =>{
 let services = [
     {
         "_id":1,
@@ -71,8 +84,45 @@ let services = [
 ];
 
 
+app.get("/api/services", (req, res) =>{
    res.send(services);
 })
+
+app.post("/api/services", upload.single("img"), (req,res)=>{
+    const result = validateService(req.body);
+
+    if(result.error){
+        console.log("I have an error");
+        res.status(400).send(result.error.details[0].message);
+        return;
+    }
+
+    const service = {
+        _id: services.length,
+        Name:req.body.Name,
+        pricing:req.body.pricing,
+        Description:req.body.Description,
+    };
+    
+    if(req.file){
+        service.img_name = "images/" + req.file.filename;
+    }
+
+    services.push(service);
+    res.status(200).send(service);
+});
+
+const validateService = (service) => {
+    const schema = Joi.object({
+        _id:Joi.allow(""),
+        Name:Joi.string().min(3).required(),
+        pricing:Joi.string().required(),
+        Description:Joi.string().required(),
+    });
+
+    return schema.validate(service);
+}
+
 
 app.listen(3001, () =>{
     console.log("im listening");
