@@ -112,6 +112,48 @@ app.post("/api/services", upload.single("img"), (req,res)=>{
     res.status(200).send(service);
 });
 
+app.put("/api/services/:id", upload.single("img"),(req,res)=>{
+    const service = services.find((service)=>service._id===parseInt(req.params.id));
+
+    if(!service){
+      res.status(404).send("The service with the provided id was not found");
+      return;
+    }
+
+    const result = validateService(req.body);
+
+    if(result.error){
+        res.status(400).send(result.error.details[0].message);
+        return;
+    }
+
+    service.Name = req.body.Name;
+    service.pricing = req.body.pricing;
+    service.Description = req.body.Description;
+
+    if(req.file){
+        service.img_name = "images/" + req.file.filename;
+    }
+
+    res.status(200).send(service);
+});
+
+app.delete("/api/services/:id",(req,res)=>{
+    console.log("Trying to delete" + req.params.id);
+    const service = services.find((service)=>service._id===parseInt(req.params.id));
+
+    if(!service){
+    console.log("Couldn't be found");
+    res.status(404).send("The service with the provided id was not found");
+    return;
+    }
+    console.log("You found me");
+    console.log("The service you are deleting is " + service.name);
+    const index = services.indexOf(service);
+    services.splice(index,1);
+    res.status(200).send(service);
+})
+
 const validateService = (service) => {
     const schema = Joi.object({
         _id:Joi.allow(""),
