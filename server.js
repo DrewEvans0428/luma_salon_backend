@@ -3,6 +3,7 @@ const cors = require("cors");
 const multer = require("multer")
 const app = express();
 const Joi = require("joi");
+const mongoose = require("mongoose");
 app.use(express.static("public"));
 app.use(express.json());
 app.use(cors());
@@ -19,11 +20,82 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
+mongoose
+.connect("mongodb+srv://Drew_Luma:Duke2005@lumasalonbackend.rm7yduo.mongodb.net/?retryWrites=true&w=majority&appName=LumaSalonBackend")
+.then(() => {
+    console.log("conncected to mongodb");
+})
+.catch((error) => {
+    console.log("couldn't connect to mongodb", error);
+});
+
+const serviceSchema = new mongoose.Schema({
+    Name:String,
+    pricing:String,
+    Description:String,
+    img_name:String,
+});
+
+const Service = mongoose.model("Service", serviceSchema);
+
 app.get("/",(req, res) => {
     res.sendFile(__dirname+"/index.html");
 });
 
+app.get("/api/services", async(req, res) => {
+    const services = await Service.find();
+    res.send(services);
+})
 
+app.post("/api/services", upload.single("img"),async(req,res)=>{
+    const result = validateService(req.body);
+
+    if(result.error){
+        console.log("I have an error");
+        res.status(400).send(result.error.details[0].message);
+        return;
+    }
+
+    const service = new Service({
+        Name:req.body.Name,
+        pricing:req.body.pricing,
+        Description:req.body.Description,
+    });
+    
+    if(req.file){
+        service.img_name = "images/" + req.file.filename;
+    }
+
+    const newService = await service.save();
+    res.status(200).send(newService);
+});
+
+app.put("/api/services/:id", upload.single("img"),async(req,res)=>{
+    const result = validateService(req.body);
+
+    if(result.error){
+        res.status(400).send(result.error.details[0].message);
+        return;
+    }
+
+    const fieldsToUpdate = {
+    Name:service.Name = req.body.Name,
+    pricing:service.pricing = req.body.pricing,
+    Description:service.Description = req.body.Description
+    }
+
+    if(req.file){
+        fieldsToUpdate.img_name = "images/" + req.file.filename;
+    }
+
+    const wentThrough = await Service.updateOne({_id:req.params.id}, fieldsToUpdate);
+    const service = await Service.findOne({_id:req.params.id});
+
+    res.status(200).send(service);
+});
+
+
+/*
 let services = [
     {
         "_id":1,
@@ -82,75 +154,10 @@ let services = [
         "img_name":"images/mermaid_spa.jpg"
     }
 ];
+*/
 
-
-app.get("/api/services", (req, res) =>{
-   res.send(services);
-})
-
-app.post("/api/services", upload.single("img"), (req,res)=>{
-    const result = validateService(req.body);
-
-    if(result.error){
-        console.log("I have an error");
-        res.status(400).send(result.error.details[0].message);
-        return;
-    }
-
-    const service = {
-        _id: services.length,
-        Name:req.body.Name,
-        pricing:req.body.pricing,
-        Description:req.body.Description,
-    };
-    
-    if(req.file){
-        service.img_name = "images/" + req.file.filename;
-    }
-
-    services.push(service);
-    res.status(200).send(service);
-});
-
-app.put("/api/services/:id", upload.single("img"),(req,res)=>{
-    const service = services.find((service)=>service._id===parseInt(req.params.id));
-
-    if(!service){
-      res.status(404).send("The service with the provided id was not found");
-      return;
-    }
-
-    const result = validateService(req.body);
-
-    if(result.error){
-        res.status(400).send(result.error.details[0].message);
-        return;
-    }
-
-    service.Name = req.body.Name;
-    service.pricing = req.body.pricing;
-    service.Description = req.body.Description;
-
-    if(req.file){
-        service.img_name = "images/" + req.file.filename;
-    }
-
-    res.status(200).send(service);
-});
-
-app.delete("/api/services/:id",(req,res)=>{
-    console.log("Trying to delete" + req.params.id);
-    const service = services.find((service)=>service._id===parseInt(req.params.id));
-
-    if(!service){
-    console.log("Couldn't be found");
-    res.status(404).send("The service with the provided id was not found");
-    return;
-    }
-    console.log("You found me");
-    console.log("The service you are deleting is " + service.name);
-    const index = services.indexOf(service);
-    services.splice(index,1);
+app.delete("/api/services/:id",async(req,res)=>{
+    const service = await Service.findByIdAndDelete(req.params.id);
     res.status(200).send(service);
 })
 
@@ -165,8 +172,12 @@ const validateService = (service) => {
     return schema.validate(service);
 }
 
-
 app.listen(3001, () =>{
     console.log("im listening");
 })
+
+
+
+
+
 
